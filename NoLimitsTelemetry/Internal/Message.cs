@@ -221,7 +221,7 @@ namespace NoLimitsTelemetry.Internal
 		public string GetDataAsString()
 		{
 			if (MessageType != MessageType.String && MessageType != MessageType.Error)
-				throw new InvalidOperationException("Not a valid string message type.");
+				throw new InvalidOperationException("Not a valid string message type: " + MessageType.ToString());
 			return Encoding.UTF8.GetString(Data);
 		}
 
@@ -232,8 +232,8 @@ namespace NoLimitsTelemetry.Internal
 		/// <remarks>Only allowed on IntValue message type</remarks>
 		public int GetDataAsInt()
 		{
-			if (MessageType != MessageType.IntValue)
-				throw new InvalidOperationException("Not an IntValue message type.");
+			if (MessageType != MessageType.IntValue && MessageType != MessageType.StationState)
+				throw new InvalidOperationException("Not an IntValue message type: " + MessageType.ToString());
 			return BitConverter.ToInt32(CopyNativeBytes(), 0);
 		}
 
@@ -245,7 +245,7 @@ namespace NoLimitsTelemetry.Internal
 		public Tuple<int, int> GetDataAsIntValuePair()
 		{
 			if (MessageType != MessageType.IntValuePair)
-				throw new InvalidOperationException("Not an IntValuePair message type.");
+				throw new InvalidOperationException("Not an IntValuePair message type: " + MessageType.ToString());
 			int value1 = BitConverter.ToInt32(CopyNativeBytes(0, 4), 0);
 			int value2 = BitConverter.ToInt32(CopyNativeBytes(4, 4), 0);
 			return new Tuple<int, int>(value1, value2);

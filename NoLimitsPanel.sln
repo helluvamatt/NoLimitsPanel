@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NoLimitsTelemetry", "NoLimi
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NoLimitsPanel", "NoLimitsPanel\NoLimitsPanel.csproj", "{6521E8EB-4E05-4B83-B766-A77D262E9ACD}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NoLimitsTelemetry.Test", "NoLimitsTelemetry.Test\NoLimitsTelemetry.Test.csproj", "{FB1FB326-AF2C-42E7-9EF5-07C29DF80FE4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{6521E8EB-4E05-4B83-B766-A77D262E9ACD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6521E8EB-4E05-4B83-B766-A77D262E9ACD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6521E8EB-4E05-4B83-B766-A77D262E9ACD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FB1FB326-AF2C-42E7-9EF5-07C29DF80FE4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FB1FB326-AF2C-42E7-9EF5-07C29DF80FE4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FB1FB326-AF2C-42E7-9EF5-07C29DF80FE4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FB1FB326-AF2C-42E7-9EF5-07C29DF80FE4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

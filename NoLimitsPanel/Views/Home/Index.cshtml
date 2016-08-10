@@ -1,0 +1,147 @@
+﻿@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+
+<html ng-app="app" ng-strict-di>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title>NL Telemetry Control Panel</title>
+	@Styles.Render("~/assets/css")
+	<meta name="description" content="NoLimits Telemetry and Control" />
+</head>
+<body ng-controller="appController" ng-cloak data-hub-name="@NoLimitsPanel.Hubs.TelemetryControlHub.HUB_NAME">
+	<div class="modal-shade" ng-show="isConnectDialogNeeded || isLoading"></div>
+	<div class="modal" ng-show="isConnectDialogNeeded">
+		<div class="form">
+			<div class="inputGroup">
+				<label>Host</label>
+				<div class="input">
+					<input type="text" ng-model="host" />
+				</div>
+			</div>
+			<div class="inputGroup">
+				<label>Port</label>
+					<div class="input">
+					<input type="number" ng-model="port" />
+				</div>
+			</div>
+			<div class="actions">
+				<button type="button" ng-click="connect()">Connect</button>
+			</div>
+		</div>
+	</div>
+	<div class="modal" ng-show="isLoading">
+		<!-- TODO Get a proper loading animation -->
+		<span style="font-size: 2em">Loading...</span>
+	</div>
+	<div class="panel-container">
+		<div class="panel">
+			<div class="row">
+				<div class="item">
+					<span class="block-label">RESET</span>
+					<button type="button" class="touch-button red" ng-class="{'flashing': !isConnected && !isSignalRConnected}" touch-button touch="reset()"></button>
+				</div>
+				<div class="item">
+					<span class="name-plate">{{currentCoasterName}} ({{currentCoasterStyle.name}})</span>
+				</div>
+				<div class="item">
+					<span class="block-label">E STOP</span>
+					<button type="button" class="touch-button red" ng-class="{'flashing': isConnected && !isEmergencyStop, 'lit': isConnected && isEmergencyStop}" touch-button touch="toggleEStop()"></button>
+				</div>
+			</div>
+			<div class="row">
+				<div class="item">
+					<span class="block-label">MAN</span>
+					<button type="button" class="touch-button amber" ng-class="{'lit': isConnected && isManualDispatch}" touch-button touch="setManualDispatch(true)"></button>
+				</div>
+				<div class="item center">
+					<span class="label">Dispatch Mode</span>
+				</div>
+				<div class="item">
+					<span class="block-label">AUTO</span>
+					<button type="button" class="touch-button green" ng-class="{'lit': isConnected && !isManualDispatch}" touch-button touch="setManualDispatch(false)"></button>
+				</div>
+			</div>
+			<div class="row" ng-show="currentCoasterStyle.hasFlyingCar">
+				<div class="item">
+					<span class="block-label">UNLOCK</span>
+					<button type="button" class="touch-button amber" ng-class="{'flashing': canUnlockFlyingCar && isConnected && !isFlyingCarUnlocked, 'lit': isConnected && currentCoasterStyle.hasFlyingCar && isFlyingCarUnlocked}" touch-button touch="setFlyerCar(true)"></button>
+				</div>
+				<div class="item center">
+					<span class="label">SEATS</span>
+				</div>
+				<div class="item">
+					<span class="block-label">LOCK</span>
+					<button type="button" class="touch-button green" ng-class="{'flashing': canLockFlyingCar && isConnected && isFlyingCarUnlocked, 'lit': isConnected && currentCoasterStyle.hasFlyingCar && !isFlyingCarUnlocked}" touch-button touch="setFlyerCar(false)"></button>
+				</div>
+			</div>
+			<div class="row" ng-show="currentCoasterStyle.hasMovableFloor">
+				<div class="item">
+					<span class="block-label">RAISE</span>
+					<button type="button" class="touch-button amber" ng-class="{'flashing': canRaiseFloor && isConnected && !isFloorRaised, 'lit': isConnected && currentCoasterStyle.hasMovableFloor && isFloorRaised}" touch-button touch="setPlatform(true)"></button>
+				</div>
+				<div class="item center">
+					<span class="label">FLOOR</span>
+				</div>
+				<div class="item">
+					<span class="block-label">LOWER</span>
+					<button type="button" class="touch-button green" ng-class="{'flashing': canLowerFloor && isConnected && isFloorRaised, 'lit': isConnected && currentCoasterStyle.hasMovableFloor && !isFloorRaised}" touch-button touch="setPlatform(false)"></button>
+				</div>
+			</div>
+			<div class="row" ng-show="currentCoasterStyle.hasHarness">
+				<div class="item">
+					<span class="block-label">OPEN</span>
+					<button type="button" class="touch-button amber" ng-class="{'flashing': canOpenHarness && isConnected && !isHarnessOpen, 'lit': isConnected && currentCoasterStyle.hasHarness && isHarnessOpen}" touch-button touch="setHarness(true)"></button>
+				</div>
+				<div class="item center">
+					<span class="label">HARNESS</span>
+				</div>
+				<div class="item">
+					<span class="block-label">CLOSE</span>
+					<button type="button" class="touch-button green" ng-class="{'flashing': canCloseHarness && isConnected && isHarnessOpen, 'lit': isConnected && currentCoasterStyle.hasHarness && !isHarnessOpen}" touch-button touch="setHarness(false)"></button>
+				</div>
+			</div>
+			<div class="row" ng-show="currentCoasterStyle.hasGates">
+				<div class="item">
+					<span class="block-label">OPEN</span>
+					<button type="button" class="touch-button amber" ng-class="{'flashing': canOpenGates && isConnected && !isGatesOpen, 'lit': isConnected && currentCoasterStyle.hasGates && isGatesOpen}" touch-button touch="setGates(true)"></button>
+				</div>
+				<div class="item center">
+					<span class="label">GATES</span>
+				</div>
+				<div class="item">
+					<span class="block-label">CLOSE</span>
+					<button type="button" class="touch-button green" ng-class="{'flashing': canCloseGates && isConnected && isGatesOpen, 'lit': isConnected && currentCoasterStyle.hasGates && !isGatesOpen}" touch-button touch="setGates(false)"></button>
+				</div>
+			</div>
+			<div class="row">
+				<div class="item">
+					<button type="button" class="touch-button green" ng-class="{'flashing': canDispatch && isConnected}" touch-button touch-start="dispatchLeftTouchStart()" touch-end="dispatchLeftTouchEnd()"></button>
+				</div>
+				<div class="item center">
+					<span class="label">HOLD FOR 2 SEC TO DISPATCH</span>
+				</div>
+				<div class="item">
+					<button type="button" class="touch-button green" ng-class="{'flashing': canDispatch && isConnected}" touch-button touch-start="dispatchRightTouchStart()" touch-end="dispatchRightTouchEnd()"></button>
+				</div>
+			</div>
+			<div class="row">
+				<div class="item full-width">
+					<div class="log">
+						<div class="entry" ng-repeat="entry in logEntries" ng-class="{'error' : entry.error}">
+							<div class="date">[{{entry.timestamp|date:'yyyy-MM-dd HH:mm:ss Z'}}]</div>
+							<div>{{entry.message}}</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+
+	@Scripts.Render("~/assets/js")
+	@Scripts.Render("~/signalr/hubs")
+</body>
+</html>

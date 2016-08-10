@@ -9,7 +9,7 @@ namespace NoLimitsTelemetry.Data
 	[Flags]
 	public enum StationState
 	{
-		// TODO Need to verify this with NoLimits actual value sent back
+		None = 0,
 		EmergencyStop = 1,
 		ManualDispatch = 2,
 		CanDispatch = 4,

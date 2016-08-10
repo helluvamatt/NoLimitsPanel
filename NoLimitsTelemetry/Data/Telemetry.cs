@@ -11,12 +11,12 @@ namespace NoLimitsTelemetry.Data
 	{
 		internal Telemetry(byte[] data)
 		{
-			if (data.Length != 76) throw new ArgumentOutOfRangeException("data", "Must be exactly 76 bytes.");
+			if (data.Length != 76) throw new ArgumentOutOfRangeException("data", "Must be exactly 76 bytes. Got: " + data.Length + " bytes");
 			State = (TelemetryState)Utils.GetInt32(data, 0);
 			Frame = Utils.GetInt32(data, 4);
 			ViewMode = Utils.GetInt32(data, 8);
 			CurrentCoaster = Utils.GetInt32(data, 12);
-			CoasterStyleId = Utils.GetInt32(data, 16);
+			CoasterStyle = (CoasterStyle)Utils.GetInt32(data, 16);
 			CurrentTrain = Utils.GetInt32(data, 20);
 			CurrentCar = Utils.GetInt32(data, 24);
 			CurrentSeat = Utils.GetInt32(data, 28);
@@ -37,7 +37,7 @@ namespace NoLimitsTelemetry.Data
 		public int Frame { get; private set; }
 		public int ViewMode { get; private set; }
 		public int CurrentCoaster { get; private set; }
-		public int CoasterStyleId { get; private set; }
+		public CoasterStyle CoasterStyle { get; private set; }
 		public int CurrentTrain { get; private set; }
 		public int CurrentCar { get; private set; }
 		public int CurrentSeat { get; private set; }

@@ -8,7 +8,7 @@ namespace NoLimitsTelemetry
 {
 	public class ErrorEventArgs : EventArgs
 	{
-		internal ErrorEventArgs(ErrorType type, string message, string exceptionType, string exceptionStackTrace)
+		public ErrorEventArgs(ErrorType type, string message, string exceptionType, string exceptionStackTrace)
 		{
 			Type = type;
 			ErrorMessage = message;

@@ -4,15 +4,17 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{652046A8-5EC2-4ABA-B3F0-7B79F2901D8B}</ProjectGuid>
-    <OutputType>Library</OutputType>
+    <ProjectGuid>{FB1FB326-AF2C-42E7-9EF5-07C29DF80FE4}</ProjectGuid>
+    <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>NoLimitsTelemetry</RootNamespace>
-    <AssemblyName>NoLimitsTelemetry</AssemblyName>
+    <RootNamespace>NoLimitsTelemetry.Test</RootNamespace>
+    <AssemblyName>NoLimitsTelemetry.Test</AssemblyName>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
@@ -22,6 +24,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
@@ -30,6 +33,10 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Newtonsoft.Json, Version=9.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.9.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -40,23 +47,19 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="CurrentCoasterOrStationChangedEventArgs.cs" />
-    <Compile Include="Data\CoasterStyle.cs" />
-    <Compile Include="Data\CurrentCoasterAndStation.cs" />
-    <Compile Include="Data\ITraceHandler.cs" />
-    <Compile Include="Data\StationState.cs" />
-    <Compile Include="Data\Telemetry.cs" />
-    <Compile Include="ErrorEventArgs.cs" />
-    <Compile Include="Internal\Message.cs" />
-    <Compile Include="Internal\MessageType.cs" />
-    <Compile Include="Internal\RequestResponseContext.cs" />
-    <Compile Include="Internal\Utils.cs" />
-    <Compile Include="NoLimitsTelemetryClient.cs" />
+    <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="StationStateReceivedEventArgs.cs" />
-    <Compile Include="TelemetryReceivedEventArgs.cs" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <None Include="App.config" />
+    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\NoLimitsTelemetry\NoLimitsTelemetry.csproj">
+      <Project>{652046a8-5ec2-4aba-b3f0-7b79f2901d8b}</Project>
+      <Name>NoLimitsTelemetry</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
