@@ -5,11 +5,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NoLimitsTelemetry
+namespace NoLimitsTelemetry.Events
 {
-	public class StationStateReceivedEventArgs : EventArgs
+	public class StationStateReceivedEventArgs : ResponseEventArgs
 	{
-		public StationStateReceivedEventArgs(int coasterId, int stationId, StationState state)
+		internal StationStateReceivedEventArgs(uint requestId, int coasterId, int stationId, StationState state) : base(requestId)
 		{
 			CoasterId = coasterId;
 			StationId = stationId;

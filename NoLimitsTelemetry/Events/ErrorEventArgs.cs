@@ -1,14 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace NoLimitsTelemetry
+﻿namespace NoLimitsTelemetry.Events
 {
-	public class ErrorEventArgs : EventArgs
+	public class ErrorEventArgs : ResponseEventArgs
 	{
-		public ErrorEventArgs(ErrorType type, string message, string exceptionType, string exceptionStackTrace)
+		public ErrorEventArgs(ErrorType type, string message, string exceptionType, string exceptionStackTrace) : this(null, type, message, exceptionType, exceptionStackTrace) { }
+
+		internal ErrorEventArgs(uint? requestId, ErrorType type, string message, string exceptionType, string exceptionStackTrace) : base(requestId)
 		{
 			Type = type;
 			ErrorMessage = message;

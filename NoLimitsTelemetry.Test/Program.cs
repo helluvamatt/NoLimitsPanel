@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json;
 using NoLimitsTelemetry.Data;
+using NoLimitsTelemetry.Events;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -39,7 +40,7 @@ namespace NoLimitsTelemetry.Test
 
 		private static void Client_CurrentCoasterOrStationChanged(object sender, CurrentCoasterOrStationChangedEventArgs e)
 		{
-			Console.WriteLine("[CurrentCoasterOrStationChanged] Coaster: {0} ({1}) Id: {2} Station: {3}", e.CurrentCoasterName, e.CurrentCoasterStyle.ToString(), e.CurrentCoasterAndStation.CurrentCoaster, e.CurrentCoasterAndStation.CurrentStation);
+			Console.WriteLine("[CurrentCoasterOrStationChanged] Coaster Id: {0} Station: {1}", e.CurrentCoasterAndStation.CurrentCoaster, e.CurrentCoasterAndStation.CurrentStation);
 		}
 
 		private static void Client_StationStateReceived(object sender, StationStateReceivedEventArgs e)

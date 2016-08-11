@@ -40,21 +40,26 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="CurrentCoasterOrStationChangedEventArgs.cs" />
+    <Compile Include="Events\CoasterCountReceivedEventArgs.cs" />
+    <Compile Include="Events\CurrentCoasterAndStationReceivedEventArgs.cs" />
+    <Compile Include="Events\CoasterNameReceivedEventArgs.cs" />
+    <Compile Include="Events\CurrentCoasterOrStationChangedEventArgs.cs" />
     <Compile Include="Data\CoasterStyle.cs" />
     <Compile Include="Data\CurrentCoasterAndStation.cs" />
     <Compile Include="Data\ITraceHandler.cs" />
     <Compile Include="Data\StationState.cs" />
     <Compile Include="Data\Telemetry.cs" />
-    <Compile Include="ErrorEventArgs.cs" />
+    <Compile Include="Events\ErrorEventArgs.cs" />
+    <Compile Include="Events\ResponseEventArgs.cs" />
     <Compile Include="Internal\Message.cs" />
     <Compile Include="Internal\MessageType.cs" />
-    <Compile Include="Internal\RequestResponseContext.cs" />
     <Compile Include="Internal\Utils.cs" />
     <Compile Include="NoLimitsTelemetryClient.cs" />
+    <Compile Include="Events\OkMessageReceivedEventArgs.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="StationStateReceivedEventArgs.cs" />
-    <Compile Include="TelemetryReceivedEventArgs.cs" />
+    <Compile Include="Events\StationStateReceivedEventArgs.cs" />
+    <Compile Include="Events\TelemetryReceivedEventArgs.cs" />
+    <Compile Include="Events\VersionReceivedEventArgs.cs" />
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNet.SignalR;
 using NoLimitsPanel.Hubs;
 using NoLimitsTelemetry;
+using NoLimitsTelemetry.Events;
 using System;
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
@@ -111,6 +112,11 @@ namespace NoLimitsPanel.Services
 				_ClientID = id;
 				Client = new NoLimitsTelemetryClient(host, port);
 				Client.Error += Client_Error;
+				Client.OkMessageReceived += Client_OkMessageReceived;
+				Client.VersionReceived += Client_VersionReceived;
+				Client.CoasterCountReceived += Client_CoasterCountReceived;
+				Client.CoasterNameReceived += Client_CoasterNameReceived;
+				Client.CurrentCoasterAndStationReceived += Client_CurrentCoasterAndStationReceived;
 				Client.TelemetryReceived += Client_TelemetryReceived;
 				Client.StationStateReceived += Client_StationStateReceived;
 				Client.CurrentCoasterOrStationChanged += Client_CurrentCoasterOrStationChanged;
@@ -139,6 +145,21 @@ namespace NoLimitsPanel.Services
 
 			#region Event handlers
 
+			private void Client_Error(object sender, ErrorEventArgs e)
+			{
+				GlobalHost.ConnectionManager.GetHubContext<ITelemetryControl>(TelemetryControlHub.HUB_NAME).Clients.Client(_ClientID).OnError(e);
+			}
+
+			private void Client_OkMessageReceived(object sender, OkMessageReceivedEventArgs e)
+			{
+				GlobalHost.ConnectionManager.GetHubContext<ITelemetryControl>(TelemetryControlHub.HUB_NAME).Clients.Client(_ClientID).OnOkMessage(e);
+			}
+
+			private void Client_VersionReceived(object sender, VersionReceivedEventArgs e)
+			{
+				GlobalHost.ConnectionManager.GetHubContext<ITelemetryControl>(TelemetryControlHub.HUB_NAME).Clients.Client(_ClientID).OnVersionReceieved(e);
+			}
+
 			private void Client_StationStateReceived(object sender, StationStateReceivedEventArgs e)
 			{
 				GlobalHost.ConnectionManager.GetHubContext<ITelemetryControl>(TelemetryControlHub.HUB_NAME).Clients.Client(_ClientID).OnStationStateReceived(e);
@@ -149,14 +170,24 @@ namespace NoLimitsPanel.Services
 				GlobalHost.ConnectionManager.GetHubContext<ITelemetryControl>(TelemetryControlHub.HUB_NAME).Clients.Client(_ClientID).OnTelemetryReceived(e);
 			}
 
+			private void Client_CoasterNameReceived(object sender, CoasterNameReceivedEventArgs e)
+			{
+				GlobalHost.ConnectionManager.GetHubContext<ITelemetryControl>(TelemetryControlHub.HUB_NAME).Clients.Client(_ClientID).OnCoasterNameReceived(e);
+			}
+
+			private void Client_CoasterCountReceived(object sender, CoasterCountReceivedEventArgs e)
+			{
+				GlobalHost.ConnectionManager.GetHubContext<ITelemetryControl>(TelemetryControlHub.HUB_NAME).Clients.Client(_ClientID).OnCoasterCountReceived(e);
+			}
+
+			private void Client_CurrentCoasterAndStationReceived(object sender, CurrentCoasterAndStationReceivedEventArgs e)
+			{
+				GlobalHost.ConnectionManager.GetHubContext<ITelemetryControl>(TelemetryControlHub.HUB_NAME).Clients.Client(_ClientID).OnCurrentCoasterAndStationReceived(e);
+			}
+
 			private void Client_CurrentCoasterOrStationChanged(object sender, CurrentCoasterOrStationChangedEventArgs e)
 			{
 				GlobalHost.ConnectionManager.GetHubContext<ITelemetryControl>(TelemetryControlHub.HUB_NAME).Clients.Client(_ClientID).OnCurrentCoasterOrStationChanged(e);
-			}
-
-			private void Client_Error(object sender, ErrorEventArgs e)
-			{
-				GlobalHost.ConnectionManager.GetHubContext<ITelemetryControl>(TelemetryControlHub.HUB_NAME).Clients.Client(_ClientID).OnError(e);
 			}
 
 			#endregion

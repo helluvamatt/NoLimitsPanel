@@ -1,4 +1,5 @@
 ﻿using NoLimitsTelemetry.Data;
+using NoLimitsTelemetry.Events;
 using NoLimitsTelemetry.Internal;
 using System;
 using System.Collections.Concurrent;
@@ -39,8 +40,9 @@ namespace NoLimitsTelemetry
 			}
 		}
 
-		private ConcurrentDictionary<uint, RequestResponseContext> _ResponseContexts = new ConcurrentDictionary<uint, RequestResponseContext>();
 		private BlockingCollection<Message> _Requests = new BlockingCollection<Message>();
+		private ConcurrentDictionary<uint, Message> _RequestsAwaitingResponses = new ConcurrentDictionary<uint, Message>();
+		private HashSet<uint> _ExplicitRequests = new HashSet<uint>();
 		private Thread _SendThread;
 		private Thread _ReceiveThread;
 		private CancellationTokenSource _CancelTokenSource;
@@ -205,7 +207,7 @@ namespace NoLimitsTelemetry
 		/// Send an idle/noop message, used to keep the socket alive
 		/// </summary>
 		/// <returns>True if OkMessage is returned, false otherwise (check errors, Error event handler may have been called as well)</returns>
-		public bool Heartbeat()
+		public uint Heartbeat()
 		{
 			return Heartbeat(SocketTimeout);
 		}
@@ -214,42 +216,37 @@ namespace NoLimitsTelemetry
 		/// Send an idle/noop message, used to keep the socket alive
 		/// </summary>
 		/// <param name="timeout">Time in milliseconds that the client should wait for server to respond to the heartbeat (idle) message before deciding the server is gone</param>
-		/// <returns>True if OkMessage is returned, false otherwise (check errors, Error event handler may have been called as well)</returns>
-		public bool Heartbeat(long timeout)
+		/// <returns>The request ID</returns>
+		public uint Heartbeat(long timeout)
 		{
-			if (!AssertConnected()) return false;
+			AssertConnected();
 			uint requestId = GetNextRequestId();
 			SendRequest(new Message(MessageType.Idle, requestId));
-			Message response = WaitForResponse(requestId, timeout);
-			return response != null && response.MessageType == MessageType.Ok;
+			return requestId;
 		}
 
 		/// <summary>
 		/// Get the server application version
 		/// </summary>
-		/// <returns>Server application version</returns>
-		public Version GetVersion()
+		/// <returns>Request ID</returns>
+		public uint GetVersion()
 		{
-			if (!AssertConnected()) return null;
+			AssertConnected();
 			uint requestId = GetNextRequestId();
 			SendRequest(new Message(MessageType.GetVersion, requestId));
-			Message response = WaitForResponse(requestId);
-			if (response == null || !AssertResponseType(requestId, response, MessageType.Version)) return null;
-			return new Version(response.Data[0], response.Data[1], response.Data[2], response.Data[3]);
+			return requestId;
 		}
 
 		/// <summary>
 		/// Get common telemetry data
 		/// </summary>
 		/// <returns>Telemetry</returns>
-		public Telemetry GetTelemetry()
+		public uint GetTelemetry()
 		{
-			if (!AssertConnected()) return null;
+			AssertConnected();
 			uint requestId = GetNextRequestId();
 			SendRequest(new Message(MessageType.GetTelemetry, requestId));
-			Message response = WaitForResponse(requestId);
-			if (response == null || !AssertResponseType(requestId, response, MessageType.Telemetry)) return null;
-			return new Telemetry(response.Data);
+			return requestId;
 		}
 
 		/// <summary>
@@ -272,15 +269,13 @@ namespace NoLimitsTelemetry
 		/// <summary>
 		/// Get the number of coasters
 		/// </summary>
-		/// <returns>Number of coasters (N)</returns>
-		public int GetCoasterCount()
+		/// <returns>Request ID</returns>
+		public uint GetCoasterCount()
 		{
-			if (!AssertConnected()) return 0;
+			AssertConnected();
 			uint requestId = GetNextRequestId();
 			SendRequest(new Message(MessageType.GetCoasterCount, requestId));
-			Message response = WaitForResponse(requestId);
-			if (response == null || !AssertResponseType(requestId, response, MessageType.IntValue)) return 0;
-			return response.GetDataAsInt();
+			return requestId;
 		}
 
 		/// <summary>
@@ -288,31 +283,23 @@ namespace NoLimitsTelemetry
 		/// </summary>
 		/// <param name="index">Index of coaster, 0..N-1</param>
 		/// <returns>Name of the specified coaster</returns>
-		/// <remarks>Use GetCoasterCount() to get the number of available coasters (N) </remarks>
-		public string GetCoasterName(int index)
+		/// <remarks>Use GetCoasterCount() to request the number of available coasters (N) </remarks>
+		public uint GetCoasterName(int index)
 		{
-			if (!AssertConnected()) return string.Empty;
+			AssertConnected();
 			uint requestId = GetNextRequestId();
 			SendRequest(new Message(MessageType.GetCoasterName, requestId).WithData(index));
-			Message response = WaitForResponse(requestId);
-			if (response == null || !AssertResponseType(requestId, response, MessageType.String)) return null;
-			return response.GetDataAsString();
+			return requestId;
 		}
 
 		/// <summary>
 		/// Get the current coaster and nearest station indices.
 		/// </summary>
-		/// <returns>CurrentCoasterAndStation, containing the requested information</returns>
+		/// <returns>Request ID</returns>
 		/// <remarks>First value will be current coaster index, second value will be nearest station index.</remarks>
-		public CurrentCoasterAndStation GetCurrentCoasterAndNearestStation()
+		public uint GetCurrentCoasterAndNearestStation()
 		{
-			if (!AssertConnected()) return null;
-			uint requestId = GetNextRequestId();
-			SendRequest(new Message(MessageType.GetCurrentCoasterAndNearestStation, requestId));
-			Message response = WaitForResponse(requestId);
-			if (response == null || !AssertResponseType(requestId, response, MessageType.IntValuePair)) return null;
-			var data = response.GetDataAsIntValuePair();
-			return new CurrentCoasterAndStation(data.Item1, data.Item2);
+			return GetCurrentCoasterAndNearestStation(true);
 		}
 
 		/// <summary>
@@ -342,14 +329,13 @@ namespace NoLimitsTelemetry
 		/// Set the emergency stop
 		/// </summary>
 		/// <param name="estop">Emergency stop state</param>
-		/// <returns>True if OkMessage is returned, false otherwise (check errors, Error event handler may have been called as well)</returns>
-		public bool SetEmergencyStop(bool estop)
+		/// <returns>Request ID</returns>
+		public uint SetEmergencyStop(bool estop)
 		{
-			if (!AssertConnected()) return false;
+			AssertConnected();
 			uint requestId = GetNextRequestId();
 			SendRequest(new Message(MessageType.GetCurrentCoasterAndNearestStation, requestId));
-			Message response = WaitForResponse(requestId);
-			return response != null && response.MessageType == MessageType.Ok;
+			return requestId;
 		}
 
 		/// <summary>
@@ -357,20 +343,18 @@ namespace NoLimitsTelemetry
 		/// </summary>
 		/// <param name="coasterIndex">Coaster index</param>
 		/// <param name="stationIndex">Station index</param>
-		/// <returns>StationState flags</returns>
+		/// <returns>Request ID</returns>
 		/// <remarks>
 		/// Use GetCoasterCount() to determine max coaster index.
 		/// 
 		/// Use GetNearestCoasterAndNearestStation() to determine coasterIndex and stationIndex
 		/// </remarks>
-		public StationState GetStationState(int coasterIndex, int stationIndex)
+		public uint GetStationState(int coasterIndex, int stationIndex)
 		{
-			if (!AssertConnected()) return StationState.None;
+			AssertConnected();
 			uint requestId = GetNextRequestId();
 			SendRequest(new Message(MessageType.GetStationState, requestId).WithData(coasterIndex).WithData(stationIndex));
-			Message response = WaitForResponse(requestId);
-			if (response == null || !AssertResponseType(requestId, response, MessageType.StationState)) return StationState.None;
-			return (StationState)response.GetDataAsInt();
+			return requestId;
 		}
 
 		/// <summary>
@@ -403,19 +387,18 @@ namespace NoLimitsTelemetry
 		/// <param name="coasterIndex">Coaster index</param>
 		/// <param name="stationIndex">Station index</param>
 		/// <param name="manualMode">True for manual, false for automatic</param>
-		/// <returns>True if OkMessage is returned, false otherwise (check errors, Error event handler may have been called as well)</returns>
+		/// <returns>Request ID</returns>
 		/// <remarks>
 		/// Use GetCoasterCount() to determine max coaster index.
 		/// 
 		/// Use GetNearestCoasterAndNearestStation() to determine coasterIndex and stationIndex
 		/// </remarks>
-		public bool SetManualMode(int coasterIndex, int stationIndex, bool manualMode)
+		public uint SetManualMode(int coasterIndex, int stationIndex, bool manualMode)
 		{
-			if (!AssertConnected()) return false;
+			AssertConnected();
 			uint requestId = GetNextRequestId();
 			SendRequest(new Message(MessageType.SetManualMode, requestId).WithData(coasterIndex).WithData(stationIndex).WithData(manualMode));
-			Message response = WaitForResponse(requestId);
-			return response != null && response.MessageType == MessageType.Ok;
+			return requestId;
 		}
 
 		/// <summary>
@@ -423,19 +406,18 @@ namespace NoLimitsTelemetry
 		/// </summary>
 		/// <param name="coasterIndex">Coaster index</param>
 		/// <param name="stationIndex">Station index</param>
-		/// <returns>True if OkMessage is returned, false otherwise (check errors, Error event handler may have been called as well)</returns>
+		/// <returns>Request ID</returns>
 		/// <remarks>
 		/// Use GetCoasterCount() to determine max coaster index.
 		/// 
 		/// Use GetNearestCoasterAndNearestStation() to determine coasterIndex and stationIndex
 		/// </remarks>
-		public bool Dispatch(int coasterIndex, int stationIndex)
+		public uint Dispatch(int coasterIndex, int stationIndex)
 		{
-			if (!AssertConnected()) return false;
+			AssertConnected();
 			uint requestId = GetNextRequestId();
 			SendRequest(new Message(MessageType.Dispatch, requestId).WithData(coasterIndex).WithData(stationIndex));
-			Message response = WaitForResponse(requestId);
-			return response != null && response.MessageType == MessageType.Ok;
+			return requestId;
 		}
 
 		/// <summary>
@@ -444,19 +426,18 @@ namespace NoLimitsTelemetry
 		/// <param name="coasterIndex">Coaster index</param>
 		/// <param name="stationIndex">Station index</param>
 		/// <param name="open">True for open, false for closed</param>
-		/// <returns>True if OkMessage is returned, false otherwise (check errors, Error event handler may have been called as well)</returns>
+		/// <returns>Request ID</returns>
 		/// <remarks>
 		/// Use GetCoasterCount() to determine max coaster index.
 		/// 
 		/// Use GetNearestCoasterAndNearestStation() to determine coasterIndex and stationIndex
 		/// </remarks>
-		public bool SetGates(int coasterIndex, int stationIndex, bool open)
+		public uint SetGates(int coasterIndex, int stationIndex, bool open)
 		{
-			if (!AssertConnected()) return false;
+			AssertConnected();
 			uint requestId = GetNextRequestId();
 			SendRequest(new Message(MessageType.SetGates, requestId).WithData(coasterIndex).WithData(stationIndex).WithData(open));
-			Message response = WaitForResponse(requestId);
-			return response != null && response.MessageType == MessageType.Ok;
+			return requestId;
 		}
 
 		/// <summary>
@@ -465,19 +446,18 @@ namespace NoLimitsTelemetry
 		/// <param name="coasterIndex">Coaster index</param>
 		/// <param name="stationIndex">Station index</param>
 		/// <param name="open">True for open, false for closed</param>
-		/// <returns>True if OkMessage is returned, false otherwise (check errors, Error event handler may have been called as well)</returns>
+		/// <returns>Request ID</returns>
 		/// <remarks>
 		/// Use GetCoasterCount() to determine max coaster index.
 		/// 
 		/// Use GetNearestCoasterAndNearestStation() to determine coasterIndex and stationIndex
 		/// </remarks>
-		public bool SetHarness(int coasterIndex, int stationIndex, bool open)
+		public uint SetHarness(int coasterIndex, int stationIndex, bool open)
 		{
-			if (!AssertConnected()) return false;
+			AssertConnected();
 			uint requestId = GetNextRequestId();
 			SendRequest(new Message(MessageType.SetHarness, requestId).WithData(coasterIndex).WithData(stationIndex).WithData(open));
-			Message response = WaitForResponse(requestId);
-			return response != null && response.MessageType == MessageType.Ok;
+			return requestId;
 		}
 
 		/// <summary>
@@ -486,19 +466,18 @@ namespace NoLimitsTelemetry
 		/// <param name="coasterIndex">Coaster index</param>
 		/// <param name="stationIndex">Station index</param>
 		/// <param name="lowered">True for lowered (ok to dispatch), false for raised (loading and unloading)</param>
-		/// <returns>True if OkMessage is returned, false otherwise (check errors, Error event handler may have been called as well)</returns>
+		/// <returns>Request ID</returns>
 		/// <remarks>
 		/// Use GetCoasterCount() to determine max coaster index.
 		/// 
 		/// Use GetNearestCoasterAndNearestStation() to determine coasterIndex and stationIndex
 		/// </remarks>
-		public bool SetPlatform(int coasterIndex, int stationIndex, bool lowered)
+		public uint SetPlatform(int coasterIndex, int stationIndex, bool lowered)
 		{
-			if (!AssertConnected()) return false;
+			AssertConnected();
 			uint requestId = GetNextRequestId();
 			SendRequest(new Message(MessageType.SetPlatform, requestId).WithData(coasterIndex).WithData(stationIndex).WithData(lowered));
-			Message response = WaitForResponse(requestId);
-			return response != null && response.MessageType == MessageType.Ok;
+			return requestId;
 		}
 
 		/// <summary>
@@ -507,21 +486,23 @@ namespace NoLimitsTelemetry
 		/// <param name="coasterIndex">Coaster index</param>
 		/// <param name="stationIndex">Station index</param>
 		/// <param name="locked">True for locked, false for unlocked</param>
-		/// <returns>True if OkMessage is returned, false otherwise (check errors, Error event handler may have been called as well)</returns>
+		/// <returns>Request ID</returns>
 		/// <remarks>
 		/// Use GetCoasterCount() to determine max coaster index.
 		/// 
 		/// Use GetNearestCoasterAndNearestStation() to determine coasterIndex and stationIndex
 		/// </remarks>
-		public bool SetFlyerCar(int coasterIndex, int stationIndex, bool locked)
+		public uint SetFlyerCar(int coasterIndex, int stationIndex, bool locked)
 		{
-			if (!AssertConnected()) return false;
+			AssertConnected();
 			uint requestId = GetNextRequestId();
 			SendRequest(new Message(MessageType.SetFlyerCar, requestId).WithData(coasterIndex).WithData(stationIndex).WithData(locked));
-			Message response = WaitForResponse(requestId);
-			return response != null && response.MessageType == MessageType.Ok;
+			return requestId;
 		}
 		
+		/// <summary>
+		/// Clean up this client, close connections, stop timers, etc...
+		/// </summary>
 		public void Dispose()
 		{
 			OnTrace("Entering...");
@@ -551,6 +532,16 @@ namespace NoLimitsTelemetry
 
 		public event EventHandler<StationStateReceivedEventArgs> StationStateReceived;
 
+		public event EventHandler<CurrentCoasterAndStationReceivedEventArgs> CurrentCoasterAndStationReceived;
+
+		public event EventHandler<OkMessageReceivedEventArgs> OkMessageReceived;
+
+		public event EventHandler<VersionReceivedEventArgs> VersionReceived;
+
+		public event EventHandler<CoasterNameReceivedEventArgs> CoasterNameReceived;
+
+		public event EventHandler<CoasterCountReceivedEventArgs> CoasterCountReceived;
+
 		public event EventHandler<CurrentCoasterOrStationChangedEventArgs> CurrentCoasterOrStationChanged;
 
 		#endregion
@@ -559,22 +550,19 @@ namespace NoLimitsTelemetry
 
 		#region Utilities
 
-		private bool AssertConnected()
+		private uint GetCurrentCoasterAndNearestStation(bool emitExplicitEvent)
 		{
-			if (_IsDisposed) return false;
-			if (_Socket == null || !_Socket.Connected) throw new InvalidOperationException("Client is not connected.");
-			return true;
+			AssertConnected();
+			uint requestId = GetNextRequestId();
+			SendRequest(new Message(MessageType.GetCurrentCoasterAndNearestStation, requestId));
+			if (emitExplicitEvent) _ExplicitRequests.Add(requestId);
+			return requestId;
 		}
 
-		private bool AssertResponseType(uint requestId, Message response, MessageType expectedType)
+		private void AssertConnected()
 		{
-			if (response.MessageType != expectedType)
-			{
-				string message = string.Format("Unexpected response message type: Expected: {0}  Actual: {1}  Request ID: {2}  Response Request ID: {3}", expectedType.ToString(), response.MessageType.ToString(), requestId, response.RequestID);
-				OnError(new ErrorEventArgs(ErrorEventArgs.ErrorType.Client, message, null, null));
-				return false;
-			}
-			return true;
+			if (_IsDisposed) throw new ObjectDisposedException("Client is disposed.");
+			if (_Socket == null || !_Socket.Connected) throw new InvalidOperationException("Client is not connected.");
 		}
 
 		private uint GetNextRequestId()
@@ -584,33 +572,70 @@ namespace NoLimitsTelemetry
 
 		private void SendRequest(Message request)
 		{
-			_ResponseContexts.TryAdd(request.RequestID, new RequestResponseContext(request));
 			_Requests.Add(request);
 		}
 
-		private Message WaitForResponse(uint requestId)
+		private void ProcessResponse(Message response)
 		{
-			return WaitForResponse(requestId, SocketTimeout);
-		}
-		
-		private Message WaitForResponse(uint requestId, long timeout)
-		{
-			RequestResponseContext ctxt;
-			if (!_ResponseContexts.TryGetValue(requestId, out ctxt))
+			// Grab the associated request
+			Message request;
+			if (_RequestsAwaitingResponses.TryRemove(response.RequestID, out request))
 			{
-				throw new InvalidOperationException("Invalid request ID: " + requestId);
+				// Process the message
+				if (response.MessageType == MessageType.Error)
+				{
+					OnError(new ErrorEventArgs(response.RequestID, ErrorEventArgs.ErrorType.Server, "Server error: " + response.GetDataAsString(), null, null));
+				}
+				else if (response.MessageType == MessageType.Ok)
+				{
+					OkMessageReceived?.Invoke(this, new OkMessageReceivedEventArgs(request.RequestID));
+				}
+				else if (response.MessageType == MessageType.Version && request.MessageType == MessageType.GetVersion)
+				{
+					VersionReceived?.Invoke(this, new VersionReceivedEventArgs(request.RequestID, new Version(response.Data[0], response.Data[1], response.Data[2], response.Data[3])));
+				}
+				else if (response.MessageType == MessageType.Telemetry && request.MessageType == MessageType.GetTelemetry)
+				{
+					TelemetryReceived?.Invoke(this, new TelemetryReceivedEventArgs(request.RequestID, new Telemetry(response.Data)));
+				}
+				else if (response.MessageType == MessageType.StationState && request.MessageType == MessageType.GetStationState)
+				{
+					StationStateReceived?.Invoke(this, new StationStateReceivedEventArgs(request.RequestID, _StationStateCoasterId, _StationStateStationId, (StationState)response.GetDataAsInt()));
+				}
+				else if (response.MessageType == MessageType.IntValuePair && request.MessageType == MessageType.GetCurrentCoasterAndNearestStation)
+				{
+					var data = response.GetDataAsIntValuePair();
+					var cur = new CurrentCoasterAndStation(data.Item1, data.Item2);
+					if (_ExplicitRequests.Remove(request.RequestID))
+					{
+						CurrentCoasterAndStationReceived?.Invoke(this, new CurrentCoasterAndStationReceivedEventArgs(request.RequestID, cur));
+					}
+					if (_NearestCoasterId != cur.CurrentCoaster || _NearestStationId != cur.CurrentStation)
+					{
+						_NearestCoasterId = cur.CurrentCoaster;
+						_NearestStationId = cur.CurrentStation;
+						CurrentCoasterOrStationChanged?.Invoke(this, new CurrentCoasterOrStationChangedEventArgs(cur));
+					}
+				}
+				else if (response.MessageType == MessageType.IntValue && request.MessageType == MessageType.GetCoasterCount)
+				{
+					CoasterCountReceived?.Invoke(this, new CoasterCountReceivedEventArgs(request.RequestID, response.GetDataAsInt()));
+				}
+				else if (response.MessageType == MessageType.String && request.MessageType == MessageType.GetCoasterName)
+				{
+					CoasterNameReceived?.Invoke(this, new CoasterNameReceivedEventArgs(request.RequestID, 0, response.GetDataAsString()));
+				}
+				else
+				{
+					string errorMsg = string.Format("Server sent an invalid response: RequestID = {0}  RequestType = {1}  ResponseType = {2}", request.RequestID, request.MessageType.ToString(), response.MessageType.ToString());
+					OnError(new ErrorEventArgs(ErrorEventArgs.ErrorType.Client, errorMsg, null, null));
+				}
 			}
-			ctxt.Wait(TimeSpan.FromMilliseconds(timeout));
-			if (ctxt.Response == null)
+			else
 			{
-				OnError(new ErrorEventArgs(ErrorEventArgs.ErrorType.Client, "Timed out waiting for response. Request = " + requestId, "TimeoutException", new TimeoutException().StackTrace));
+				string errorMsg = string.Format("Server sent a response for an invalid request ID: {0}  Type: {1} ", response.RequestID, response.MessageType.ToString());
+				OnError(new ErrorEventArgs(ErrorEventArgs.ErrorType.Client, errorMsg, null, null));
 			}
-			return ctxt.Response;
-		}
-
-		private async Task<Message> WaitForResponseAsync(uint requestId)
-		{
-			return await Task.Run(() => WaitForResponse(requestId));
 		}
 
 		private void OnError(ErrorEventArgs args)
@@ -642,8 +667,7 @@ namespace NoLimitsTelemetry
 		{
 			try
 			{
-				Telemetry t = GetTelemetry();
-				TelemetryReceived?.Invoke(this, new TelemetryReceivedEventArgs { TelemetryData = t });
+				GetTelemetry();
 			}
 			catch (Exception ex)
 			{
@@ -655,22 +679,15 @@ namespace NoLimitsTelemetry
 		{
 			try
 			{
-				if (StationStateFollowsNearest)
+				if (StationStateFollowsNearest && _NearestSet)
 				{
-					if (_NearestSet)
-					{
-						_StationStateCoasterId = _NearestCoasterId;
-						_StationStateStationId = _NearestStationId;
-					}
-					else
-					{
-						var nearest = GetCurrentCoasterAndNearestStation();
-						_StationStateCoasterId = nearest.CurrentCoaster;
-						_StationStateStationId = nearest.CurrentStation;
-					}
+					_StationStateCoasterId = _NearestCoasterId;
+					_StationStateStationId = _NearestStationId;
 				}
-				StationState s = GetStationState(_StationStateCoasterId, _StationStateStationId);
-				StationStateReceived?.Invoke(this, new StationStateReceivedEventArgs(_StationStateCoasterId, _StationStateStationId, s));
+				if (_StationStateCoasterId > -1 && _StationStateStationId > -1)
+				{
+					GetStationState(_StationStateCoasterId, _StationStateStationId);
+				}
 			}
 			catch (Exception ex)
 			{
@@ -684,21 +701,7 @@ namespace NoLimitsTelemetry
 			try
 			{
 				if (!_IsUpdatingNearest) return;
-				var data = GetCurrentCoasterAndNearestStation();
-				if (_IsUpdatingNearest && (data.CurrentCoaster != _NearestCoasterId || data.CurrentStation != _NearestStationId))
-				{
-					OnTrace(string.Format("Nearest coaster or station changed: Coaster: [{0} -> {1}] Station: [{2} -> {3}]", _NearestCoasterId, data.CurrentCoaster, _NearestStationId, data.CurrentStation));
-					_NearestCoasterId = data.CurrentCoaster;
-					_NearestStationId = data.CurrentStation;
-					if (StationStateFollowsNearest)
-					{
-						_StationStateCoasterId = _NearestCoasterId;
-						_StationStateStationId = _NearestStationId;
-					}
-					string name = GetCoasterName(_NearestCoasterId);
-					Telemetry t = GetTelemetry();
-					CurrentCoasterOrStationChanged?.Invoke(this, new CurrentCoasterOrStationChangedEventArgs(data, name, t));
-				}
+				GetCurrentCoasterAndNearestStation(false);
 			}
 			catch (Exception ex) {
 				OnError(new ErrorEventArgs(ErrorEventArgs.ErrorType.Client, ex.Message, ex.GetType().Name, ex.StackTrace));
@@ -723,6 +726,7 @@ namespace NoLimitsTelemetry
 					{
 						sent += _Socket.Send(payload, sent, payload.Length - sent, SocketFlags.None);
 					}
+					_RequestsAwaitingResponses.TryAdd(message.RequestID, message);
 				}
 				catch (ObjectDisposedException) { } // Ignore, this client is being disposed
 				catch (OperationCanceledException) { } // Ignore, this client is being disposed
@@ -747,7 +751,7 @@ namespace NoLimitsTelemetry
 					// Read until we have a message
 					int start;
 					int length;
-					Message message;
+					Message response;
 					do
 					{
 						if (messageBuffer.Count > (ushort.MaxValue * 2))
@@ -760,29 +764,15 @@ namespace NoLimitsTelemetry
 
 						messageBuffer.AddRange(buffer.Take(rcvd));
 					}
-					while (!Message.TryParseFromReceivedBytes(messageBuffer.ToArray(), out start, out length, out message));
+					while (!Message.TryParseFromReceivedBytes(messageBuffer.ToArray(), out start, out length, out response));
 
-					OnTrace("Received message: " + message.MessageType.ToString());
+					OnTrace("Received message: " + response.MessageType.ToString());
 
 					// We now have a message, remove the associated bytes from the buffer
 					messageBuffer.RemoveRange(start, length);
 
-					// Process the message
-					RequestResponseContext ctxt;
-					if (_ResponseContexts.TryGetValue(message.RequestID, out ctxt))
-					{
-						if (message.MessageType == MessageType.Error)
-						{
-							OnError(new ErrorEventArgs(ErrorEventArgs.ErrorType.Server, "Server error: " + message.GetDataAsString(), null, null));
-						}
-
-						OnTrace("Signaling message arrived for request [" + message.RequestID + "]");
-						ctxt.ResponseArrived(message);
-					}
-					else
-					{
-						OnError(new ErrorEventArgs(ErrorEventArgs.ErrorType.Client, "Server sent a response with an invalid RequestID: " + message.RequestID + "  MessageType: " + message.MessageType, null, null));
-					}
+					// Process the response on a thread pool thread
+					Task.Run(() => ProcessResponse(response));
 				}
 				catch (OperationCanceledException) { } // Ignore, this client is being disposed
 				catch (ObjectDisposedException) { } // Ignore, this client is being disposed

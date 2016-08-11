@@ -168,11 +168,36 @@ app.controller('appController', ['$scope', '$attrs', '$timeout', function ($scop
 			if ($scope.currentCoaster != state.CurrentCoasterAndStation.CurrentCoaster || $scope.currentStation != state.CurrentCoasterAndStation.CurrentStation) {
 				$scope.currentCoaster = state.CurrentCoasterAndStation.CurrentCoaster;
 				$scope.currentStation = state.CurrentCoasterAndStation.CurrentStation;
-				$scope.currentCoasterName = state.CurrentCoasterName;
 			}
-
 		});
 	};
+
+	$scope.hub.client.onOkMessage = function (args)
+	{
+		$scope.$apply(function ()
+		{
+			debug("OkMessage received: " + args);
+		});
+	};
+
+	$scope.hub.client.onVersionReceieved = function (args)
+	{
+		$scope.$apply(function ()
+		{
+			debug("Version received: " + args.Version);
+		});
+	};
+
+	$scope.hub.client.onCoasterNameReceived = function (args)
+	{
+		$scope.$apply(function ()
+		{
+			$scope.currentCoasterName = args.CoasterName;
+		});
+	};
+
+	//$scope.hub.client.onCoasterCountReceived = function (args) { };
+	//$scope.hub.client.onCurrentCoasterAndStationReceived = function (args) {};
 
 	//#endregion
 
@@ -182,6 +207,7 @@ app.controller('appController', ['$scope', '$attrs', '$timeout', function ($scop
 		{
 			debug("Connected to SignalR.");
 			$scope.isLoading = false;
+			$scope.isSignalRConnected = true;
 			$scope.isConnectDialogNeeded = true;
 		});
 	};
@@ -240,7 +266,7 @@ app.controller('appController', ['$scope', '$attrs', '$timeout', function ($scop
 	var doDispatch = function ()
 	{
 		if ($scope.isConnected && isValidStation()) {
-			$scope.hub.server.dispatch($scope.currentCoaster, $scope.currentStation).done(onSignalRDone);
+			$scope.hub.server.dispatch($scope.currentCoaster, $scope.currentStation).done(onSignalRDone).fail(onSignalRFail);
 		}
 	}
 
@@ -278,7 +304,7 @@ app.controller('appController', ['$scope', '$attrs', '$timeout', function ($scop
 	$scope.toggleEStop = function ()
 	{
 		if ($scope.isConnected) {
-			$scope.hub.server.setEmergencyStop(!$scope.isEmergencyStop).done(onSignalRDone);
+			$scope.hub.server.setEmergencyStop(!$scope.isEmergencyStop).done(onSignalRDone).fail(onSignalRFail);
 		}
 	};
 
@@ -292,21 +318,21 @@ app.controller('appController', ['$scope', '$attrs', '$timeout', function ($scop
 	$scope.setHarness = function (open)
 	{
 		if ($scope.isConnected && isValidStation()) {
-			$scope.hub.server.setHarness($scope.currentCoaster, $scope.currentStation, open).done(onSignalRDone);
+			$scope.hub.server.setHarness($scope.currentCoaster, $scope.currentStation, open).done(onSignalRDone).fail(onSignalRFail);
 		}
 	};
 
 	$scope.setPlatform = function (lowered)
 	{
 		if ($scope.isConnected && isValidStation()) {
-			$scope.hub.server.setPlatform($scope.currentCoaster, $scope.currentStation, lowered).done(onSignalRDone);
+			$scope.hub.server.setPlatform($scope.currentCoaster, $scope.currentStation, lowered).done(onSignalRDone).fail(onSignalRFail);
 		}
 	};
 
 	$scope.setFlyerCar = function (locked)
 	{
 		if ($scope.isConnected && isValidStation()) {
-			$scope.hub.server.setFlyerCar($scope.currentCoaster, $scope.currentStation, locked).done(onSignalRDone);
+			$scope.hub.server.setFlyerCar($scope.currentCoaster, $scope.currentStation, locked).done(onSignalRDone).fail(onSignalRFail);
 		}
 	};
 
